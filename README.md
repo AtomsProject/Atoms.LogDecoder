@@ -19,15 +19,12 @@ This process significantly reduces the size of large log messages while maintain
 
 ```csharp
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
 public async Task<string> EncodeData<T>(T data)
 {
-    // Serialize to JSON
-    var json = JsonSerializer.SerializeToUtf8Bytes(data);
-    
-    // Prepare a MemoryStream to collect the base64 output
     using var base64Output = new MemoryStream();
     await using (var cryptoStream = new CryptoStream(
                     base64Output,
@@ -35,8 +32,8 @@ public async Task<string> EncodeData<T>(T data)
                     CryptoStreamMode.Write))
     await using (var gzipStream = new GZipStream(cryptoStream, CompressionMode.Compress))
     {
-        // Write the serialized JSON to the GZipStream
-        await gzipStream.WriteAsync(json, 0, json.Length);
+        // Serialize directly into the gzipStream.
+        await JsonSerializer.SerializeAsync(gzipStream, data);
     }
 
     return Encoding.Default.GetString(base64Output.ToArray());
