@@ -1,0 +1,26 @@
+title: Atoms Log Decoder
+description: A tool for decoding log files
+baseurl: ""
+url: ""
+
+# Build settings
+markdown: kramdown
+theme: jekyll-theme-minimal
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .git/
+  - tailwind.config.js
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+
+# Include Tailwind CSS
+include:
+  - _includes
+  - _layouts
+  - assets 

@@ -1,0 +1,13 @@
+{
+  "name": "atoms-log-decoder-docs",
+  "version": "1.0.0",
+  "description": "Documentation for Atoms Log Decoder",
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/css/style.scss -o ./assets/css/main.css --watch",
+    "build": "tailwindcss -i ./assets/css/style.scss -o ./assets/css/main.css"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.1",
+    "daisyui": "^4.7.2"
+  }
+} 
