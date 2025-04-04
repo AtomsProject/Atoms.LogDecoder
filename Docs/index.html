@@ -48,9 +48,14 @@ title: Atoms Log Decoder
                     <label class="label">
                         <span class="label-text">Decoded Result</span>
                     </label>
-                    <button id="copyButton" class="btn btn-ghost btn-sm">
-                        Copy
-                    </button>
+                    <div class="space-x-2">
+                        <button id="toTsvButton" class="btn btn-ghost btn-sm hidden">
+                            To TSV
+                        </button>
+                        <button id="copyButton" class="btn btn-ghost btn-sm">
+                            Copy
+                        </button>
+                    </div>
                 </div>
                 <textarea id="decodedOutput" class="textarea textarea-bordered h-96 font-mono text-sm" readonly
                     placeholder="Decoded result will appear here..."></textarea>
@@ -69,8 +74,11 @@ title: Atoms Log Decoder
 <script>
     const decodeButton = document.getElementById('decodeButton');
     const copyButton = document.getElementById('copyButton');
+    const toTsvButton = document.getElementById('toTsvButton');
     const encodedInput = document.getElementById('encodedInput');
     const decodedOutput = document.getElementById('decodedOutput');
+    
+    let parsedJsonData = null;
 
     decodeButton.addEventListener('click', async () => {
         if (!encodedInput.value.trim()) {
@@ -79,6 +87,8 @@ title: Atoms Log Decoder
         }
 
         decodeButton.disabled = true;
+        toTsvButton.classList.add('hidden');
+        parsedJsonData = null;
 
         try {
             // Decode base64
@@ -100,8 +110,13 @@ title: Atoms Log Decoder
 
             // Try to parse and format as JSON if possible
             try {
-                const jsonData = JSON.parse(text);
-                decodedOutput.value = JSON.stringify(jsonData, null, 2);
+                parsedJsonData = JSON.parse(text);
+                decodedOutput.value = JSON.stringify(parsedJsonData, null, 2);
+                
+                // Show the To TSV button if the data is an array
+                if (Array.isArray(parsedJsonData) && parsedJsonData.length > 0) {
+                    toTsvButton.classList.remove('hidden');
+                }
             } catch (jsonError) {
                 // Not valid JSON or other parsing error, just show the plain text
                 decodedOutput.value = text;
@@ -126,4 +141,60 @@ title: Atoms Log Decoder
             console.error('Failed to copy text: ', err);
         }
     });
+    
+    toTsvButton.addEventListener('click', async () => {
+        if (!parsedJsonData || !Array.isArray(parsedJsonData) || parsedJsonData.length === 0) return;
+        
+        try {
+            const tsvData = convertJsonArrayToTsv(parsedJsonData);
+            await navigator.clipboard.writeText(tsvData);
+            
+            // Hide the button after clicking
+            toTsvButton.classList.add('hidden');
+            
+            // Also replace the text in the output area
+            decodedOutput.value = tsvData;
+        } catch (err) {
+            console.error('Failed to convert to TSV: ', err);
+            decodedOutput.value = `Error converting to TSV: ${err.message}`;
+        }
+    });
+    
+    function convertJsonArrayToTsv(jsonArray) {
+        // Get all unique field names from all objects
+        const fieldNames = new Set();
+        jsonArray.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+                Object.keys(item).forEach(key => fieldNames.add(key));
+            }
+        });
+        
+        // Convert field names to array
+        const fields = Array.from(fieldNames);
+        
+        // Create header row
+        let tsvContent = fields.join('\t') + '\n';
+        
+        // Create data rows
+        jsonArray.forEach(item => {
+            const row = fields.map(field => {
+                let value = item[field] ?? '';
+                
+                // Handle values that contain tabs, newlines, or quotes
+                if (typeof value === 'string') {
+                    // Replace tabs and newlines to avoid breaking TSV format
+                    value = value.replace(/\t/g, ' ').replace(/\n/g, ' ');
+                } else if (typeof value === 'object' && value !== null) {
+                    // For objects or arrays, convert to JSON string
+                    value = JSON.stringify(value).replace(/\t/g, ' ').replace(/\n/g, ' ');
+                }
+                
+                return value;
+            });
+            
+            tsvContent += row.join('\t') + '\n';
+        });
+        
+        return tsvContent;
+    }
 </script>

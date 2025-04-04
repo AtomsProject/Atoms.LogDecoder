@@ -2,6 +2,8 @@
 
 A client-side decoder for parsing Base64 encoded Gzipped text, useful if you are wanting to log larger blobs of text, but don't want to have big log messages.
 
+You can access the tool online at https://logdecoder.atomsproject.com/
+
 ## Data Encoding Process
 
 The data encoding process involves three steps:
