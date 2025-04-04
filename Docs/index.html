@@ -3,21 +3,127 @@ layout: default
 title: Atoms Log Decoder
 ---
 
-<div class="hero min-h-screen bg-base-200">
-  <div class="hero-content text-center">
-    <div class="max-w-md">
-      <h1 class="text-5xl font-bold">Atoms Log Decoder</h1>
-      <p class="py-6">Welcome to the Atoms Log Decoder documentation. This tool helps you decode and analyze log files efficiently.</p>
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title">Features</h2>
-          <ul class="menu bg-base-200 w-full rounded-box">
-            <li><a>Efficient log parsing</a></li>
-            <li><a>Advanced analysis tools</a></li>
-            <li><a>User-friendly interface</a></li>
-          </ul>
+<div class="hero bg-base-200">
+    <div class="container mx-auto px-1 max-w-4xl">
+        <div class="hero-content text-left">
+            <div>
+                <h1 class="text-5xl font-bold text-center">Atoms Log Decoder</h1>
+                <div class="card bg-base-100 shadow-xl mt-3">
+                    <div class="card-body py-1 px-2">
+                        <div class="flex justify-between items-start space-x-3">
+                            <p class="text-left">A specialized tool for decoding Base64-encoded, GZip-compressed JSON data, perfect
+                                for handling large log messages while maintaining readability. See our <a href="https://github.com/AtomsProject/Atoms.LogDecoder" rel="noopener noreferrer" target="_blank">Github</a> for more information.</p>
+                            <a href="https://github.com/AtomsProject/Atoms.LogDecoder"
+                                rel="noopener noreferrer" target="_blank"
+                                class="btn-sm inline-flex items-center gap-2">
+                                <img src="github-mark-white.svg" alt="GitHub" width="24" height="24">
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </div>
+
+<div class="container mx-auto px-1 max-w-4xl">
+    <div class="card bg-base-200 shadow-xl mt-2">
+        <div class="card-body space-y-2">
+            <div class="form-control w-full">
+                <label class="label">
+                    <span class="label-text">Encoded Log Data</span>
+                </label>
+                <textarea id="encodedInput" class="textarea textarea-bordered h-48 font-mono text-sm"
+                    placeholder="Paste your Base64-encoded and GZip-compressed log data here..."></textarea>
+            </div>
+
+            <div class="card-actions justify-center">
+                <button id="decodeButton" class="btn btn-primary" type="submit">
+                    Decode
+                </button>
+            </div>
+
+            <div class="form-control w-full">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="label">
+                        <span class="label-text">Decoded Result</span>
+                    </label>
+                    <button id="copyButton" class="btn btn-ghost btn-sm">
+                        Copy
+                    </button>
+                </div>
+                <textarea id="decodedOutput" class="textarea textarea-bordered h-96 font-mono text-sm" readonly
+                    placeholder="Decoded result will appear here..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+</style>
+
+<script>
+    const decodeButton = document.getElementById('decodeButton');
+    const copyButton = document.getElementById('copyButton');
+    const encodedInput = document.getElementById('encodedInput');
+    const decodedOutput = document.getElementById('decodedOutput');
+
+    decodeButton.addEventListener('click', async () => {
+        if (!encodedInput.value.trim()) {
+            decodedOutput.value = 'Please enter some data to decode.';
+            return;
+        }
+
+        decodeButton.disabled = true;
+
+        try {
+            // Decode base64
+            const binaryString = atob(encodedInput.value);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // Decompress gzip
+            const decompressed = await new Response(
+                new Blob([bytes]).stream().pipeThrough(
+                    new DecompressionStream('gzip')
+                )
+            ).arrayBuffer();
+
+            // Convert to text
+            const text = new TextDecoder().decode(decompressed);
+
+            // Try to parse and format as JSON if possible
+            try {
+                const jsonData = JSON.parse(text);
+                decodedOutput.value = JSON.stringify(jsonData, null, 2);
+            } catch (jsonError) {
+                // Not valid JSON or other parsing error, just show the plain text
+                decodedOutput.value = text;
+            }
+        } catch (error) {
+            decodedOutput.value = `Error decoding data: ${error.message}`;
+        } finally {
+            decodeButton.disabled = false;
+        }
+    });
+
+    copyButton.addEventListener('click', async () => {
+        if (!decodedOutput.value) return;
+
+        try {
+            await navigator.clipboard.writeText(decodedOutput.value);
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => {
+                copyButton.textContent = 'Copy';
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    });
+</script>

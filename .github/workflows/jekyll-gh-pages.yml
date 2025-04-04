@@ -28,13 +28,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+      
+      - name: Install dependencies and build CSS
+        working-directory: ./Docs
+        run: |
+          pnpm install
+          pnpm build
+      
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
           source: ./Docs
           destination: ./_site
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 

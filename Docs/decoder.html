@@ -1,0 +1,69 @@
+---
+layout: default
+title: Log Decoder
+---
+
+<div class="container mx-auto p-4">
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h2 class="card-title">Log Decoder</h2>
+      
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Encoded Log Data</span>
+        </label>
+        <textarea 
+          id="encodedInput" 
+          class="textarea textarea-bordered h-32 font-mono" 
+          placeholder="Paste your encoded log data here..."
+        ></textarea>
+      </div>
+
+      <div class="card-actions justify-end mt-4">
+        <button id="decodeButton" class="btn btn-primary">Decode</button>
+      </div>
+
+      <div class="form-control w-full mt-4">
+        <label class="label">
+          <span class="label-text">Decoded Result</span>
+        </label>
+        <textarea 
+          id="decodedOutput" 
+          class="textarea textarea-bordered h-96 font-mono" 
+          readonly
+        ></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('decodeButton').addEventListener('click', async () => {
+  const encodedInput = document.getElementById('encodedInput').value;
+  const decodedOutput = document.getElementById('decodedOutput');
+  
+  try {
+    // Decode base64
+    const binaryString = atob(encodedInput);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Decompress gzip
+    const decompressed = await new Response(
+      new Blob([bytes]).stream().pipeThrough(
+        new DecompressionStream('gzip')
+      )
+    ).arrayBuffer();
+
+    // Convert to text
+    const text = new TextDecoder().decode(decompressed);
+    
+    // Display the result
+    decodedOutput.value = text;
+  } catch (error) {
+    decodedOutput.value = `Error decoding data: ${error.message}`;
+  }
+});
+</script> 
