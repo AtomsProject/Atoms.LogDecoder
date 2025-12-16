@@ -288,11 +288,10 @@ title: Atoms Log Decoder
         if (typeof value === 'boolean') return value ? 'true' : 'false';
         if (typeof value === 'number') return String(value);
 
-        // For strings, check if it looks like a stack trace
+        // For strings, check if it contains line breaks
         if (typeof value === 'string') {
-            // Format stack traces with proper indentation
-            if (value.includes('\n   at ') || value.includes('\n  at ')) {
-                return formatStackTrace(value);
+            if (value.includes('\n')) {
+                return formatMultilineString(value);
             }
             return value;
         }
@@ -300,14 +299,14 @@ title: Atoms Log Decoder
         return String(value);
     }
 
-    function formatStackTrace(stackTrace) {
-        // Split the stack trace into lines and format each line
-        const lines = stackTrace.split('\n');
+    function formatMultilineString(str) {
+        // Split the string into lines and format each line with indentation
+        const lines = str.split('\n');
         const formattedLines = lines.map((line, index) => {
             if (index === 0) {
                 return line;
             }
-            // Preserve existing indentation but ensure alignment
+            // Indent continuation lines
             return '   ' + line.trim();
         });
         return formattedLines.join('\n');
