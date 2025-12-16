@@ -49,7 +49,7 @@ title: Atoms Log Decoder
                         <span class="label-text">Decoded Result</span>
                     </label>
                     <div class="space-x-2">
-                        <button id="toPrettyButton" class="btn btn-ghost btn-sm hidden">
+                        <button id="toPrettyButton" class="btn btn-ghost btn-sm">
                             Pretty
                         </button>
                         <button id="toTsvButton" class="btn btn-ghost btn-sm hidden">
@@ -92,7 +92,6 @@ title: Atoms Log Decoder
 
         decodeButton.disabled = true;
         toTsvButton.classList.add('hidden');
-        toPrettyButton.classList.add('hidden');
         parsedJsonData = null;
 
         try {
@@ -122,11 +121,6 @@ title: Atoms Log Decoder
                 if (Array.isArray(parsedJsonData) && parsedJsonData.length > 0) {
                     toTsvButton.classList.remove('hidden');
                 }
-
-                // Show the Magic button if the data is a non-null object
-                if (parsedJsonData && typeof parsedJsonData === 'object') {
-                    toPrettyButton.classList.remove('hidden');
-                }
             } catch (jsonError) {
                 // Not valid JSON or other parsing error, just show the plain text
                 decodedOutput.value = text;
@@ -140,11 +134,6 @@ title: Atoms Log Decoder
                 // Show the To TSV button if the data is an array
                 if (Array.isArray(parsedJsonData) && parsedJsonData.length > 0) {
                     toTsvButton.classList.remove('hidden');
-                }
-
-                // Show the Magic button if the data is a non-null object
-                if (parsedJsonData && typeof parsedJsonData === 'object') {
-                    toPrettyButton.classList.remove('hidden');
                 }
             } catch (jsonError) {
                 decodedOutput.value = `Error decoding data: ${error.message}`;
@@ -187,14 +176,27 @@ title: Atoms Log Decoder
     });
 
     toPrettyButton.addEventListener('click', () => {
-        if (!parsedJsonData || typeof parsedJsonData !== 'object') return;
+        let dataToPrettify = parsedJsonData;
+
+        // If no parsed data yet, try to parse the input directly as raw JSON
+        if (!dataToPrettify) {
+            const input = encodedInput.value.trim();
+            if (!input) return;
+
+            try {
+                dataToPrettify = JSON.parse(input);
+                parsedJsonData = dataToPrettify;
+            } catch (e) {
+                decodedOutput.value = 'Input is not valid JSON';
+                return;
+            }
+        }
+
+        if (typeof dataToPrettify !== 'object') return;
 
         try {
-            const magicOutput = convertJsonToPretty(parsedJsonData);
-            decodedOutput.value = magicOutput;
-
-            // Hide the button after clicking
-            toPrettyButton.classList.add('hidden');
+            const prettyOutput = convertJsonToPretty(dataToPrettify);
+            decodedOutput.value = prettyOutput;
         } catch (err) {
             console.error('Failed to apply pretty formatting: ', err);
             decodedOutput.value = `Error applying pretty formatting: ${err.message}`;
