@@ -49,7 +49,7 @@ title: Atoms Log Decoder
                         <span class="label-text">Decoded Result</span>
                     </label>
                     <div class="space-x-2">
-                        <button id="toPrettyButton" class="btn btn-ghost btn-sm">
+                        <button id="toPrettyButton" class="btn btn-ghost btn-sm hidden">
                             Pretty
                         </button>
                         <button id="toTsvButton" class="btn btn-ghost btn-sm hidden">
@@ -83,22 +83,29 @@ title: Atoms Log Decoder
     const decodedOutput = document.getElementById('decodedOutput');
     
     let parsedJsonData = null;
+    let inputDebounceTimer = null;
 
-    // Detect input type and highlight appropriate button
+    // Detect input type and show/highlight appropriate button
     encodedInput.addEventListener('input', () => {
-        const input = encodedInput.value.trim();
-        const looksLikeJson = input.startsWith('{') || input.startsWith('[');
-
-        if (looksLikeJson) {
-            toPrettyButton.classList.add('btn-primary');
-            toPrettyButton.classList.remove('btn-ghost');
-        } else {
-            toPrettyButton.classList.remove('btn-primary');
-            toPrettyButton.classList.add('btn-ghost');
-        }
-
         // Reset parsed data when input changes
         parsedJsonData = null;
+
+        // Debounce the detection
+        clearTimeout(inputDebounceTimer);
+        inputDebounceTimer = setTimeout(() => {
+            const input = encodedInput.value.trim();
+            const looksLikeJson = input.startsWith('{') || input.startsWith('[');
+
+            if (looksLikeJson) {
+                toPrettyButton.classList.remove('hidden');
+                toPrettyButton.classList.add('btn-primary');
+                toPrettyButton.classList.remove('btn-ghost');
+            } else {
+                toPrettyButton.classList.add('hidden');
+                toPrettyButton.classList.remove('btn-primary');
+                toPrettyButton.classList.add('btn-ghost');
+            }
+        }, 150);
     });
 
     decodeButton.addEventListener('click', async () => {
@@ -109,6 +116,7 @@ title: Atoms Log Decoder
 
         decodeButton.disabled = true;
         toTsvButton.classList.add('hidden');
+        toPrettyButton.classList.add('hidden');
         parsedJsonData = null;
 
         try {
@@ -138,6 +146,11 @@ title: Atoms Log Decoder
                 if (Array.isArray(parsedJsonData) && parsedJsonData.length > 0) {
                     toTsvButton.classList.remove('hidden');
                 }
+
+                // Show the Pretty button if the data is an object
+                if (parsedJsonData && typeof parsedJsonData === 'object') {
+                    toPrettyButton.classList.remove('hidden');
+                }
             } catch (jsonError) {
                 // Not valid JSON or other parsing error, just show the plain text
                 decodedOutput.value = text;
@@ -145,12 +158,17 @@ title: Atoms Log Decoder
         } catch (error) {
             // If base64/gzip decoding fails, try parsing as raw JSON
             try {
-                parsedJsonData = JSON.parse(encodedInput.value);
+                parsedJsonData = JSON.parse(encodedInput.value.trim());
                 decodedOutput.value = JSON.stringify(parsedJsonData, null, 2);
 
                 // Show the To TSV button if the data is an array
                 if (Array.isArray(parsedJsonData) && parsedJsonData.length > 0) {
                     toTsvButton.classList.remove('hidden');
+                }
+
+                // Show the Pretty button if the data is an object
+                if (parsedJsonData && typeof parsedJsonData === 'object') {
+                    toPrettyButton.classList.remove('hidden');
                 }
             } catch (jsonError) {
                 decodedOutput.value = `Error decoding data: ${error.message}`;
