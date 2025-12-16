@@ -84,6 +84,23 @@ title: Atoms Log Decoder
     
     let parsedJsonData = null;
 
+    // Detect input type and highlight appropriate button
+    encodedInput.addEventListener('input', () => {
+        const input = encodedInput.value.trim();
+        const looksLikeJson = input.startsWith('{') || input.startsWith('[');
+
+        if (looksLikeJson) {
+            toPrettyButton.classList.add('btn-primary');
+            toPrettyButton.classList.remove('btn-ghost');
+        } else {
+            toPrettyButton.classList.remove('btn-primary');
+            toPrettyButton.classList.add('btn-ghost');
+        }
+
+        // Reset parsed data when input changes
+        parsedJsonData = null;
+    });
+
     decodeButton.addEventListener('click', async () => {
         if (!encodedInput.value.trim()) {
             decodedOutput.value = 'Please enter some data to decode.';
