@@ -49,6 +49,9 @@ title: Atoms Log Decoder
                         <span class="label-text">Decoded Result</span>
                     </label>
                     <div class="space-x-2">
+                        <button id="toMagicButton" class="btn btn-ghost btn-sm hidden">
+                            Magic ✨
+                        </button>
                         <button id="toTsvButton" class="btn btn-ghost btn-sm hidden">
                             To TSV
                         </button>
@@ -75,6 +78,7 @@ title: Atoms Log Decoder
     const decodeButton = document.getElementById('decodeButton');
     const copyButton = document.getElementById('copyButton');
     const toTsvButton = document.getElementById('toTsvButton');
+    const toMagicButton = document.getElementById('toMagicButton');
     const encodedInput = document.getElementById('encodedInput');
     const decodedOutput = document.getElementById('decodedOutput');
     
@@ -88,6 +92,7 @@ title: Atoms Log Decoder
 
         decodeButton.disabled = true;
         toTsvButton.classList.add('hidden');
+        toMagicButton.classList.add('hidden');
         parsedJsonData = null;
 
         try {
@@ -112,17 +117,38 @@ title: Atoms Log Decoder
             try {
                 parsedJsonData = JSON.parse(text);
                 decodedOutput.value = JSON.stringify(parsedJsonData, null, 2);
-                
+
                 // Show the To TSV button if the data is an array
                 if (Array.isArray(parsedJsonData) && parsedJsonData.length > 0) {
                     toTsvButton.classList.remove('hidden');
+                }
+
+                // Show the Magic button if the data is a non-null object
+                if (parsedJsonData && typeof parsedJsonData === 'object') {
+                    toMagicButton.classList.remove('hidden');
                 }
             } catch (jsonError) {
                 // Not valid JSON or other parsing error, just show the plain text
                 decodedOutput.value = text;
             }
         } catch (error) {
-            decodedOutput.value = `Error decoding data: ${error.message}`;
+            // If base64/gzip decoding fails, try parsing as raw JSON
+            try {
+                parsedJsonData = JSON.parse(encodedInput.value);
+                decodedOutput.value = JSON.stringify(parsedJsonData, null, 2);
+
+                // Show the To TSV button if the data is an array
+                if (Array.isArray(parsedJsonData) && parsedJsonData.length > 0) {
+                    toTsvButton.classList.remove('hidden');
+                }
+
+                // Show the Magic button if the data is a non-null object
+                if (parsedJsonData && typeof parsedJsonData === 'object') {
+                    toMagicButton.classList.remove('hidden');
+                }
+            } catch (jsonError) {
+                decodedOutput.value = `Error decoding data: ${error.message}`;
+            }
         } finally {
             decodeButton.disabled = false;
         }
@@ -144,19 +170,34 @@ title: Atoms Log Decoder
     
     toTsvButton.addEventListener('click', async () => {
         if (!parsedJsonData || !Array.isArray(parsedJsonData) || parsedJsonData.length === 0) return;
-        
+
         try {
             const tsvData = convertJsonArrayToTsv(parsedJsonData);
             await navigator.clipboard.writeText(tsvData);
-            
+
             // Hide the button after clicking
             toTsvButton.classList.add('hidden');
-            
+
             // Also replace the text in the output area
             decodedOutput.value = tsvData;
         } catch (err) {
             console.error('Failed to convert to TSV: ', err);
             decodedOutput.value = `Error converting to TSV: ${err.message}`;
+        }
+    });
+
+    toMagicButton.addEventListener('click', () => {
+        if (!parsedJsonData || typeof parsedJsonData !== 'object') return;
+
+        try {
+            const magicOutput = convertJsonToMagic(parsedJsonData);
+            decodedOutput.value = magicOutput;
+
+            // Hide the button after clicking
+            toMagicButton.classList.add('hidden');
+        } catch (err) {
+            console.error('Failed to apply magic formatting: ', err);
+            decodedOutput.value = `Error applying magic formatting: ${err.message}`;
         }
     });
     
@@ -196,5 +237,79 @@ title: Atoms Log Decoder
         });
         
         return tsvContent;
+    }
+
+    function convertJsonToMagic(obj, indent = 0) {
+        const indentStr = '    '.repeat(indent);
+        const nextIndent = '    '.repeat(indent + 1);
+        let lines = [];
+
+        if (Array.isArray(obj)) {
+            if (obj.length === 0) {
+                return '[]';
+            }
+            lines.push('[');
+            obj.forEach((item, index) => {
+                const comma = index < obj.length - 1 ? ',' : '';
+                if (item && typeof item === 'object') {
+                    lines.push(nextIndent + convertJsonToMagic(item, indent + 1) + comma);
+                } else {
+                    lines.push(nextIndent + formatMagicValue(item) + comma);
+                }
+            });
+            lines.push(indentStr + ']');
+            return lines.join('\n');
+        }
+
+        if (obj && typeof obj === 'object') {
+            const entries = Object.entries(obj);
+            if (entries.length === 0) {
+                return '{}';
+            }
+            lines.push('{');
+            entries.forEach(([key, value], index) => {
+                const comma = index < entries.length - 1 ? ',' : '';
+                if (value && typeof value === 'object') {
+                    lines.push(nextIndent + key + ': ' + convertJsonToMagic(value, indent + 1) + comma);
+                } else {
+                    lines.push(nextIndent + key + ': ' + formatMagicValue(value) + comma);
+                }
+            });
+            lines.push(indentStr + '}');
+            return lines.join('\n');
+        }
+
+        return formatMagicValue(obj);
+    }
+
+    function formatMagicValue(value) {
+        if (value === null) return 'null';
+        if (value === undefined) return 'undefined';
+        if (typeof value === 'boolean') return value ? 'true' : 'false';
+        if (typeof value === 'number') return String(value);
+
+        // For strings, check if it looks like a stack trace
+        if (typeof value === 'string') {
+            // Format stack traces with proper indentation
+            if (value.includes('\n   at ') || value.includes('\n  at ')) {
+                return formatStackTrace(value);
+            }
+            return value;
+        }
+
+        return String(value);
+    }
+
+    function formatStackTrace(stackTrace) {
+        // Split the stack trace into lines and format each line
+        const lines = stackTrace.split('\n');
+        const formattedLines = lines.map((line, index) => {
+            if (index === 0) {
+                return line;
+            }
+            // Preserve existing indentation but ensure alignment
+            return '   ' + line.trim();
+        });
+        return formattedLines.join('\n');
     }
 </script>
